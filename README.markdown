@@ -4,7 +4,7 @@
 I have added some additional functionality that has allowed us to more easily adopt the Google Storage solution. It was created to migrate our application's static resources from S3 to GS
 
 #### Sample Usage
-        $./gsutil cp -tcp s3://mybucket/* gs://mybucket/
+        $./gsutil cp -tcp libs/* gs://mybucket/
 
 #### Options
         -t  Tries to automagically detect your file's Content Type header and assigns it
@@ -12,3 +12,5 @@ I have added some additional functionality that has allowed us to more easily ad
         -c  Sets the caching headers up to have far-future expiry
         
         -p  Creates the resource with a public-read canned ACL
+        
+        -z  Compress eligable files with GZIP prior to uploading

@@ -32,6 +32,7 @@ import tempfile
 import xml.dom.minidom
 
 import mimetypes
+import gzip
 
 
 def OutputAndExit(message):
@@ -85,6 +86,7 @@ SYNOPSIS
         -t    Automatically detects the Content-Type header and assigns it
         -c    Sets caching up to be far-future 
         -p    Creates the resource with a public read ACL
+        -z    compresses file using gzip where eligable
     List buckets or objects:
       ls [-l] uri1 [uri2...]
     Make buckets:
@@ -509,7 +511,7 @@ def GetAclCommand(args, unused_sub_opts, debug):
   parsed_xml = xml.dom.minidom.parseString(acl.to_xml())
   print parsed_xml.toprettyxml(indent='    ')
 
-def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False):
+def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False, do_gzip = False):
   """Helper method for CopyObjsCommand.
 
   Args:
@@ -525,7 +527,7 @@ def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False):
   # potentially very large files/objects.
 
   if (src_uri.is_cloud_uri() and dst_uri.is_cloud_uri() and
-      src_uri.provider == dst_uri.provider):
+      src_uri.provider == dst_uri.provider and not do_gzip):
     # Object -> object, within same provider (uses x-<provider>-copy-source
     # metadata HTTP header to request copying at the server):
     src_bucket = src_uri.get_bucket()
@@ -537,7 +539,21 @@ def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False):
   dst_key = dst_uri.new_key()
   if src_uri.is_file_uri() and dst_uri.is_cloud_uri():
     # File -> object:
-    dst_key.set_contents_from_file(src_key.fp, cache_headers)
+    if do_gzip:
+      # TDOO: GZIP compression for txt and js resources for file to object transfers only
+      gzippables = ['.txt', '.js', '.css', '.xml', '.xsl', '.html']
+      if [x for x in gzippables if x in src_key.name]:
+        print "compressing %s to gzip .. " % src_key.name
+      
+        cache_headers['Content-Encoding'] = 'gzip'
+
+        the_gzip = gzip.open("%s.gz" % src_key.name, 'wb')
+        the_gzip.writelines(src_key.fp)
+        the_gzip.close()
+      
+        dst_key.set_contents_from_file(gzip.open('%s.gz' % src_key.name, 'rb'), cache_headers)
+    else:
+      dst_key.set_contents_from_file(src_key.fp, cache_headers)
   elif src_uri.is_cloud_uri() and dst_uri.is_file_uri():
     # Object -> file:
     src_key.get_file(dst_key.fp)
@@ -546,11 +562,13 @@ def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False):
     dst_key.set_contents_from_file(src_key.fp, cache_headers)
   else:
     # We implement cross-provider object copy through a local temp file:
+    # TODO: GZIP compression for local temp file stuff
     tmp = tempfile.TemporaryFile()
     src_key.get_file(tmp)
     tmp.seek(0)
     dst_key.set_contents_from_file(tmp)
   if do_public:
+    print 'setting ACL to public'
     dst_key.set_acl('public-read')
 
 
@@ -626,6 +644,8 @@ def CopyObjsCommand(args, sub_opts, debug):
       dst_key_name = dst_uri.object_name
     new_dst_uri = dst_uri.clone_replace_name(dst_key_name)
     do_public = False
+    do_gzip = False
+    
     if len(sub_opts) > 0:
       print 'performing advanced copy of %s ...' % dst_key_name
     for o, foo in sub_opts:
@@ -637,10 +657,11 @@ def CopyObjsCommand(args, sub_opts, debug):
             print 'caching file'
             cache_headers["Cache-Control"] = 'max-age=2592000'
         if o == "-p":
-            print 'setting ACL to public'
             cache_headers["x-goog-acl"] = 'public-read'
             do_public = True
-    PerformCopy(src_uri, new_dst_uri, cache_headers, do_public)
+        if o == "-z":
+            do_gzip = True
+    PerformCopy(src_uri, new_dst_uri, cache_headers, do_public, do_gzip)
 
 
 def PrintAcl(uri, indent):
@@ -1040,7 +1061,7 @@ def SetupConfigIfNeeded():
 NO_MAX = sys.maxint
 commands = {
     'cat': [CatCommand, 0, NO_MAX, 'h', False, True, 0],
-    'cp': [CopyObjsCommand, 2, NO_MAX, 'tcp', True, False, 0],
+    'cp': [CopyObjsCommand, 2, NO_MAX, 'tcpz', True, False, 0],
     'getacl': [GetAclCommand, 1, 1, '', False, False, 0],
     'help': [HelpCommand, 0, 0, '', False, False, 0],
     'ls': [ListCommand, 0, NO_MAX, 'l', False, True, 0],

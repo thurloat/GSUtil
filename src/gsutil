@@ -31,6 +31,8 @@ import tarfile
 import tempfile
 import xml.dom.minidom
 
+import mimetypes
+
 
 def OutputAndExit(message):
   sys.stderr.write('%s\n' % message)
@@ -79,6 +81,10 @@ SYNOPSIS
       cp src_uri dst_uri
         - or -
       cp uri1 [uri2 ...] dst_uri
+      Options:
+        -t    Automatically detects the Content-Type header and assigns it
+        -c    Sets caching up to be far-future 
+        -p    Creates the resource with a public read ACL
     List buckets or objects:
       ls [-l] uri1 [uri2...]
     Make buckets:
@@ -503,7 +509,7 @@ def GetAclCommand(args, unused_sub_opts, debug):
   parsed_xml = xml.dom.minidom.parseString(acl.to_xml())
   print parsed_xml.toprettyxml(indent='    ')
 
-def PerformCopy(src_uri, dst_uri):
+def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False):
   """Helper method for CopyObjsCommand.
 
   Args:
@@ -531,33 +537,37 @@ def PerformCopy(src_uri, dst_uri):
   dst_key = dst_uri.new_key()
   if src_uri.is_file_uri() and dst_uri.is_cloud_uri():
     # File -> object:
-    dst_key.set_contents_from_file(src_key.fp)
+    dst_key.set_contents_from_file(src_key.fp, cache_headers)
   elif src_uri.is_cloud_uri() and dst_uri.is_file_uri():
     # Object -> file:
     src_key.get_file(dst_key.fp)
   elif src_uri.is_file_uri() and dst_uri.is_file_uri():
     # File -> file:
-    dst_key.set_contents_from_file(src_key.fp)
+    dst_key.set_contents_from_file(src_key.fp, cache_headers)
   else:
     # We implement cross-provider object copy through a local temp file:
     tmp = tempfile.TemporaryFile()
     src_key.get_file(tmp)
     tmp.seek(0)
     dst_key.set_contents_from_file(tmp)
+  if do_public:
+    dst_key.set_acl('public-read')
 
 
-def CopyObjsCommand(args, unused_sub_opts, debug):
+def CopyObjsCommand(args, sub_opts, debug):
   """Implementation of cp command.
 
   Args:
     args: command-line arguments
-    unused_sub_opts: command-specific options from getopt.
+    sub_opts: command-specific options from getopt.
     debug: flag indicating whether to include debug output
   """
 
   src_uri_strs = args[0:len(args)-1]
   dst_uri = StorageUri(args[-1], False, debug)
   multi_obj_copy = True
+  
+  cache_headers = {}
 
   # Expand wildcards and containers in source URIs.
   exp_src_uri_strs = ExpandWildcardsAndContainers(src_uri_strs, debug)
@@ -615,7 +625,22 @@ def CopyObjsCommand(args, unused_sub_opts, debug):
       # dest is an object or file: use dst obj name
       dst_key_name = dst_uri.object_name
     new_dst_uri = dst_uri.clone_replace_name(dst_key_name)
-    PerformCopy(src_uri, new_dst_uri)
+    do_public = False
+    if len(sub_opts) > 0:
+      print 'performing advanced copy of %s ...' % dst_key_name
+    for o, foo in sub_opts:
+        if o == "-t":
+            mime_type =  mimetypes.guess_type(dst_key_name)[0]
+            print 'Assigning Content-Type of %s ...' % mime_type
+            cache_headers['Content-Type'] = mime_type if mime_type is not None else 'application/octet-stream'
+        if o == "-c":
+            print 'caching file'
+            cache_headers["Cache-Control"] = 'max-age=2592000'
+        if o == "-p":
+            print 'setting ACL to public'
+            cache_headers["x-goog-acl"] = 'public-read'
+            do_public = True
+    PerformCopy(src_uri, new_dst_uri, cache_headers, do_public)
 
 
 def PrintAcl(uri, indent):
@@ -1015,7 +1040,7 @@ def SetupConfigIfNeeded():
 NO_MAX = sys.maxint
 commands = {
     'cat': [CatCommand, 0, NO_MAX, 'h', False, True, 0],
-    'cp': [CopyObjsCommand, 2, NO_MAX, '', True, False, 0],
+    'cp': [CopyObjsCommand, 2, NO_MAX, 'tcp', True, False, 0],
     'getacl': [GetAclCommand, 1, 1, '', False, False, 0],
     'help': [HelpCommand, 0, 0, '', False, False, 0],
     'ls': [ListCommand, 0, NO_MAX, 'l', False, True, 0],

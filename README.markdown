@@ -4,7 +4,7 @@
 I have added some additional functionality that has allowed us to more easily adopt the Google Storage solution. It was created to migrate our application's static resources from S3 to GS
 
 #### Sample Usage
-        $./gsutil cp -tcp libs/* gs://mybucket/
+        $./gsutil cp -ztcp libs/* gs://mybucket/
 
 #### Options
         -t  Tries to automagically detect your file's Content Type header and assigns it

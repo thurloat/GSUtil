@@ -511,7 +511,7 @@ def GetAclCommand(args, unused_sub_opts, debug):
   parsed_xml = xml.dom.minidom.parseString(acl.to_xml())
   print parsed_xml.toprettyxml(indent='    ')
 
-def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False, do_gzip = False):
+def PerformCopy(src_uri, dst_uri, cache_headers, do_public = False, do_gzip = False):
   """Helper method for CopyObjsCommand.
 
   Args:
@@ -544,16 +544,19 @@ def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False, do_gzip
       gzippables = ['.txt', '.js', '.css', '.xml', '.xsl', '.html']
       if [x for x in gzippables if x in src_key.name]:
         print "compressing %s to gzip .. " % src_key.name
-      
-        cache_headers['Content-Encoding'] = 'gzip'
+        
+        # cache_headers['Content-Type'] = 'application/x-gzip'
+        
 
-        the_gzip = gzip.open("%s.gz" % src_key.name, 'wb')
+        gzip_tmp = tempfile.mkstemp()
+        
+        the_gzip = gzip.open(gzip_tmp[1], 'wb')
         the_gzip.writelines(src_key.fp)
         the_gzip.close()
-      
-        dst_key.set_contents_from_file(gzip.open('%s.gz' % src_key.name, 'rb'), cache_headers)
-        
-        remove('%s.gz' % src_key.name)
+        cache_headers['Content-Length'] = str(os.path.getsize(gzip_tmp[1]))
+        cache_headers['Content-Encoding'] = 'gzip'
+        dst_key.set_contents_from_file(gzip.open(gzip_tmp[1], 'rb'), cache_headers)
+
     else:
       dst_key.set_contents_from_file(src_key.fp, cache_headers)
   elif src_uri.is_cloud_uri() and dst_uri.is_file_uri():
@@ -570,8 +573,8 @@ def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False, do_gzip
     tmp.seek(0)
     dst_key.set_contents_from_file(tmp)
   if do_public:
-    print 'setting ACL to public'
-    dst_key.set_acl('public-read')
+     print 'setting ACL to public'
+     dst_key.make_public()
 
 
 def CopyObjsCommand(args, sub_opts, debug):

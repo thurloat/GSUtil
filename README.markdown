@@ -14,3 +14,6 @@ I have added some additional functionality that has allowed us to more easily ad
         -p  Creates the resource with a public-read canned ACL
         
         -z  Compress eligable files with GZIP prior to uploading
+
+### Known Issues
+    - using the public flag on small files occasionally fails with a 404, key not found... Invesitgation Insues.

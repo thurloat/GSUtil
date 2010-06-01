@@ -552,6 +552,8 @@ def PerformCopy(src_uri, dst_uri, cache_headers = {}, do_public = False, do_gzip
         the_gzip.close()
       
         dst_key.set_contents_from_file(gzip.open('%s.gz' % src_key.name, 'rb'), cache_headers)
+        
+        remove('%s.gz' % src_key.name)
     else:
       dst_key.set_contents_from_file(src_key.fp, cache_headers)
   elif src_uri.is_cloud_uri() and dst_uri.is_file_uri():

@@ -556,7 +556,8 @@ def PerformCopy(src_uri, dst_uri, cache_headers, do_public = False, do_gzip = Fa
         cache_headers['Content-Length'] = str(os.path.getsize(gzip_tmp[1]))
         cache_headers['Content-Encoding'] = 'gzip'
         dst_key.set_contents_from_file(gzip.open(gzip_tmp[1], 'rb'), cache_headers)
-
+      else: 
+        dst_key.set_contents_from_file(src_key.fp, cache_headers)
     else:
       dst_key.set_contents_from_file(src_key.fp, cache_headers)
   elif src_uri.is_cloud_uri() and dst_uri.is_file_uri():

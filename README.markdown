@@ -4,9 +4,9 @@
 I have added some additional functionality that has allowed us to more easily adopt the Google Storage solution. It was created to migrate our application's static resources from S3 to GS
 
 #### Sample Usage
-        $./gsutil cp -ztcp libs/* gs://mybucket/
+        $./gsutil cp -ztp -c 2984000 libs/* gs://mybucket/
 
-#### Options
+#### New Copy Options
         -t  Tries to automagically detect your file's Content Type header and assigns it
         
         -c  [int:seconds] Sets the caching headers up to have far-future expiry. Defaults to 1 month.

@@ -657,7 +657,7 @@ def CopyObjsCommand(args, sub_opts, debug):
     for o, foo in sub_opts:
         if o == "-t":
             mime_type =  mimetypes.guess_type(dst_key_name)[0]
-            print 'Assigning Content-Type of %s ...' % mime_type
+            print 'Assigning Content-Type of %s ...' % mime_type if mime_type is not None else "Using default Content Type"
             cache_headers['Content-Type'] = mime_type if mime_type is not None else 'application/octet-stream'
         if o == "-c":
             foo = foo if foo.isdigit() else "2592000"

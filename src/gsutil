@@ -84,7 +84,7 @@ SYNOPSIS
       cp uri1 [uri2 ...] dst_uri
       Options:
         -t    Automatically detects the Content-Type header and assigns it
-        -c    Sets caching up to be far-future 
+        -c [int:seconds]   Sets caching up to be far-future. defaults to 1 month 
         -p    Creates the resource with a public read ACL
         -z    compresses file using gzip where eligable
     List buckets or objects:
@@ -556,7 +556,7 @@ def PerformCopy(src_uri, dst_uri, cache_headers, do_public = False, do_gzip = Fa
         cache_headers['Content-Length'] = str(os.path.getsize(gzip_tmp[1]))
         cache_headers['Content-Encoding'] = 'gzip'
         dst_key.set_contents_from_file(gzip.open(gzip_tmp[1], 'rb'), cache_headers)
-      else: 
+      else:
         dst_key.set_contents_from_file(src_key.fp, cache_headers)
     else:
       dst_key.set_contents_from_file(src_key.fp, cache_headers)
@@ -590,7 +590,7 @@ def CopyObjsCommand(args, sub_opts, debug):
   src_uri_strs = args[0:len(args)-1]
   dst_uri = StorageUri(args[-1], False, debug)
   multi_obj_copy = True
-  
+
   cache_headers = {}
 
   # Expand wildcards and containers in source URIs.
@@ -660,8 +660,9 @@ def CopyObjsCommand(args, sub_opts, debug):
             print 'Assigning Content-Type of %s ...' % mime_type
             cache_headers['Content-Type'] = mime_type if mime_type is not None else 'application/octet-stream'
         if o == "-c":
-            print 'caching file'
-            cache_headers["Cache-Control"] = 'max-age=2592000'
+            foo = foo if foo.isdigit() else "2592000"
+            print 'caching file for %s seconds' % foo
+            cache_headers["Cache-Control"] = 'max-age=%s' % foo
         if o == "-p":
             cache_headers["x-goog-acl"] = 'public-read'
             do_public = True
@@ -1067,7 +1068,7 @@ def SetupConfigIfNeeded():
 NO_MAX = sys.maxint
 commands = {
     'cat': [CatCommand, 0, NO_MAX, 'h', False, True, 0],
-    'cp': [CopyObjsCommand, 2, NO_MAX, 'tcpz', True, False, 0],
+    'cp': [CopyObjsCommand, 2, NO_MAX, 'tc:pz', True, False, 0],
     'getacl': [GetAclCommand, 1, 1, '', False, False, 0],
     'help': [HelpCommand, 0, 0, '', False, False, 0],
     'ls': [ListCommand, 0, NO_MAX, 'l', False, True, 0],

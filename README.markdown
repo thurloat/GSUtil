@@ -9,7 +9,7 @@ I have added some additional functionality that has allowed us to more easily ad
 #### Options
         -t  Tries to automagically detect your file's Content Type header and assigns it
         
-        -c  Sets the caching headers up to have far-future expiry
+        -c  [int:seconds] Sets the caching headers up to have far-future expiry. Defaults to 1 month.
         
         -p  Creates the resource with a public-read canned ACL
         

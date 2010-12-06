@@ -1,5 +1,5 @@
 # NOTE
-#### The bulk of my codes and features were pulled / done later in the official tool from Google. I won't be maintaining this any longer :) 
+#### The bulk of my codes and features were pulled into or re-created in the official tool from Google. I won't be maintaining this any longer :) 
 
 
 # GSUtil

@@ -1,3 +1,7 @@
+# NOTE
+#### The bulk of my codes and features were pulled / done later in the official tool from Google. I won't be maintaining this any longer :) 
+
+
 # GSUtil
 #### http://code.google.com/p/gsutil/ - A command line tool for interacting with cloud storage services
 ****
